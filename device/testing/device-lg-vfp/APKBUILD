@@ -1,0 +1,43 @@
+# Reference: <https://postmarketos.org/devicepkg>
+maintainer="Egor 835 <egor.su.8@gmail.com>"
+pkgname=device-lg-vfp
+pkgdesc="LG Wine Smart"
+pkgver=1
+pkgrel=0
+url="https://postmarketos.org"
+license="MIT"
+arch="armv7"
+options="!check !archcheck"
+depends="
+	linux-postmarketos-qcom-msm8226
+	mkbootimg
+	postmarketos-base
+	soc-qcom-msm8226
+	"
+makedepends="devicepkg-dev"
+subpackages="$pkgname-nonfree-firmware:nonfree_firmware"
+source="
+	deviceinfo
+	modules-initfs
+	WCNSS_qcom_wlan_nv.bin
+	"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+}
+
+nonfree_firmware() {
+	pkgdesc="WiFi/BT and GPU firmware (wcnss from the modem partition, NV from stock)"
+	depends="msm-firmware-loader firmware-qcom-adreno-a330"
+	install -Dm644 "$srcdir"/WCNSS_qcom_wlan_nv.bin \
+		"$subpkgdir"/lib/firmware/wlan/prima/WCNSS_qcom_wlan_nv.bin
+}
+sha512sums="
+b07af666bc6e73644ad79f7f51953eb8279d2790c764a0a128bfd652ea5dc18036bd196f61fc025bb3344f22b58e055493208fb471205e9e18dc4567ddff657d  deviceinfo
+cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e  modules-initfs
+959b1d5f3743b98279389a19c6bb341f5a7d91ee25a3b827969d8c4d1f8bb0d9642144b9bf856869438d0fe52bc293e9305a6368587060e925e7be3b60f0a1a6  WCNSS_qcom_wlan_nv.bin
+"

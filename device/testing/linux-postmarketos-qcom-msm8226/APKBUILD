@@ -3,11 +3,11 @@ maintainer="Stefan Hansson <newbyte@postmarketos.org>"
 _flavor="postmarketos-qcom-msm8226"
 pkgname=linux-$_flavor
 pkgver=6.16.12
-pkgrel=3
+pkgrel=50
 pkgdesc="Mainline Kernel fork for APQ8026/MSM8226/MSM8926 devices"
 arch="armv7"
 _carch="arm"
-url="https://github.com/msm8226-mainline/linux"
+url="https://github.com/egor835/linux"
 license="GPL-2.0-only"
 options="!strip !check !tracedeps
 	pmb:cross-native
@@ -32,11 +32,12 @@ makedepends="
 "
 
 _config="config-$_flavor.$arch"
-_tag="v${pkgver/_/-}-msm8226-u2"
+# LG vfp (Wine Smart) branch on top of v6.16.12-msm8226-u2
+_tag="v${pkgver/_/-}-lg-vfp-1"
 
 # Source
 source="
-	https://github.com/msm8226-mainline/linux/archive/$_tag/linux-$_tag.tar.gz
+	https://github.com/egor835/linux/releases/download/$_tag/linux-$_tag.tar.gz
 	$_config
 "
 builddir="$srcdir/linux-${_tag#v}"
@@ -68,6 +69,6 @@ package() {
 }
 
 sha512sums="
-63bd2038d6ac22e104f36e31e3137c1cd000de713ef79c8ad13a6b81a64e975c2e8259c25490b96766c500a4df1a8623fbba9be9fc40ddc868032a11cb516679  linux-v6.16.12-msm8226-u2.tar.gz
-f5f0c2a788cffa598404ba55d46535e173b92c2055ef0019774056af09870c2530b7b83f353c7f4516eb900a29f2ed50fe9ce59305189594c5b2e91a07d2a10b  config-postmarketos-qcom-msm8226.armv7
+31766918a44a07e9d93a85a8587c24a82fa6ca20d6d15ec2c1c81e369af8e4bb2256794c86b558fdbc4c74e83e9ebbb1eee9a1679c09450901e603cdde06664c  linux-v6.16.12-lg-vfp-1.tar.gz
+be7c904e5c9174ab49bed48dd3739331582286bda951966faa6b9a9ffffca988c854c3eec26ec045724ac44ba6d2fd98d0853d4a50ef6decd7920cb3a50478d2  config-postmarketos-qcom-msm8226.armv7
 "
