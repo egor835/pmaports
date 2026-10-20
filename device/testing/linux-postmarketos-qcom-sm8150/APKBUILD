@@ -1,0 +1,94 @@
+# Co-Maintainer: Viola Guerrera <guerrera.nicola@gmail.com>
+maintainer="Pan Ortiz <panjeoc@proton.me>"
+_flavor="postmarketos-qcom-sm8150"
+pkgname=linux-$_flavor
+pkgver=7.0.0
+pkgrel=0
+pkgdesc="Mainline Kernel fork for SM8150 devices"
+arch="aarch64"
+_carch="arm64"
+url="https://gitlab.postmarketos.org/soc/qualcomm-sm8150/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-nftables
+	"
+makedepends="
+	bison
+	clang
+	elfutils-dev
+	findutils
+	flex
+	linux-headers
+	lld
+	llvm
+	openssl-dev
+	pahole
+	perl
+	postmarketos-installkernel
+	python3
+	"
+
+_tag="v$pkgver-sm8150"
+
+# Source
+source="
+	linux-$_tag.tar.gz::$url/-/archive/$_tag/linux-$_tag.tar.gz
+	config-$_flavor.$arch
+	0001-enable-ufs.patch
+	0002-libbpf-Fix-UAF-in-strset__add_str.patch
+	0003-xiaomi-vayu-fix-otg.patch
+"
+builddir="$srcdir/linux-$_tag"
+
+prepare() {
+	default_prepare
+	cp "$srcdir/config-$_flavor.$arch" .config
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	if [ -e "$builddir/arch/$_carch/boot/vmlinuz.efi" ]; then
+		# ZBOOT EFI decompressor for EFI booting
+		install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz.efi" \
+			"$pkgdir/boot/linux.efi"
+
+		# Old GZIP'd kernel image for boot.img compatibility
+		install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz" \
+			"$pkgdir/boot/vmlinuz"
+	else
+		echo "WARNING: CONFIG_ZBOOT not enabled!"
+		install -Dm644 "$builddir/arch/$_carch/boot/Image.gz" \
+			"$pkgdir/boot/vmlinuz"
+	fi
+
+	make modules_install dtbs_install \
+		ARCH="$_carch" \
+		LLVM=1 \
+		INSTALL_PATH="$pkgdir"/boot/ \
+		INSTALL_MOD_PATH="$pkgdir/usr" \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs-tmp
+
+	mkdir -p "$pkgdir"/boot/dtbs/qcom
+	cp -r "$pkgdir"/boot/dtbs-tmp/qcom/sm8150* "$pkgdir"/boot/dtbs/qcom
+	rm -rf "$pkgdir"/boot/dtbs-tmp
+
+	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+}
+
+sha512sums="
+c1bdb11a9ad8be826ec5781e239c60ad92d6bb3a2d6b0adff8ef1f1e334bc6889ab91683257691ba3155f976011cd37969be379d509c9f928f4f85753e95635e  linux-v7.0.0-sm8150.tar.gz
+c2513e51494325fcff8eb5cf431ffa095d88abcedc18fee81b79bda47516bed359cfdf147ae9e92d255961128daf35eddef5577ae0f319729c4d002bcbb5f836  config-postmarketos-qcom-sm8150.aarch64
+316decafef4528b3d8fa9ce1f2c1588048ae0a99adf088d61372d84ff95ae7bf58e5cc0d03d73201f1735f3d523468d98113ac575714930229434a46385a5c3d  0001-enable-ufs.patch
+a75ad54e77870170a1e33bd8ec68bfa64542791f1c9383da6335f0e7f5da14f10e9fe267d58a3ade8e04d7eb3d82e5ca2354b52b2fa0d363c9bb6d5bec860ba8  0002-libbpf-Fix-UAF-in-strset__add_str.patch
+7b62e50cc3277361bd941e2aa63ccc9922aaf86deec3519c584eee5f04f059c0a812e6a5f51575928270bf749860d5707da29b1b0a2440e8918c7cf8c37e1bd3  0003-xiaomi-vayu-fix-otg.patch
+"

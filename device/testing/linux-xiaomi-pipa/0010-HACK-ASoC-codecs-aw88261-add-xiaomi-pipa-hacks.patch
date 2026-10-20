@@ -1,0 +1,111 @@
+From e6ba2a28df3e983bbe78957f1ec2f08ac795e3b0 Mon Sep 17 00:00:00 2001
+From: bluebunny <1812-bluebunny@users.noreply.gitlab.postmarketos.org>
+Date: Wed, 22 Apr 2026 21:45:22 +0000
+Subject: [PATCH] HACK: ASoC: codecs: aw88261: add xiaomi-pipa hacks
+
+Reset the Xiaomi Pad 6 amplifiers during probe and preserve their firmware
+clock and format settings for the eight-slot TDM bus. The machine driver
+only configures CPU DAI slots, so the generic codec setup would overwrite
+the firmware settings with I2S defaults.
+
+Select the left receive path on all four amplifiers: the firmware selects
+the right path on SL/SR, leaving those two speakers silent with this TDM
+setup. The selected TDM slot determines which stereo channel is played.
+
+With the keyboard connector below the screen, PL is lower left, PR is
+upper right, SL is lower right, and SR is upper left. Route channels 2/3
+(PL/SR) to the left stereo slot and channels 0/1 (PR/SL) to the right.
+
+Linux 7.2 provides the format and hardware-parameter callbacks upstream.
+---
+ sound/soc/codecs/aw88261.c | 44 ++++++++++++++++++++++++++++++++++++++
+ sound/soc/codecs/aw88261.h |  4 ++++
+ 2 files changed, 48 insertions(+)
+
+diff --git a/sound/soc/codecs/aw88261.c b/sound/soc/codecs/aw88261.c
+index dbdf51188cf5..421406a52dd6 100644
+--- a/sound/soc/codecs/aw88261.c
++++ b/sound/soc/codecs/aw88261.c
+@@ -129,6 +129,35 @@ static int aw88261_dev_configure_syspll(struct aw88261 *aw88261)
+ 	struct aw_device *aw_dev = aw88261->aw_pa;
+ 	int ret;
+ 
++	/*
++	 * Pipa's firmware supplies the working clock and format settings for
++	 * its eight-slot TDM bus. The machine driver only configures slots on
++	 * the CPU DAI, so the cached codec settings still describe I2S.
++	 * Preserve that setup, selecting the matching stereo slot for each
++	 * amplifier. In landscape with the keyboard
++	 * connector below the screen, channels 0/1 (PR/SL) are on the right
++	 * and channels 2/3 (PL/SR) are on the left.
++	 * Use the left receive path on every amplifier; the firmware selects
++	 * the right path on SL/SR, which stays silent with this TDM setup.
++	 */
++	if (of_machine_is_compatible("xiaomi,pipa")) {
++		unsigned int slot = (aw_dev->channel == 0 || aw_dev->channel == 1);
++
++		ret = regmap_write(aw_dev->regmap, AW88261_I2SCTRL2_REG,
++				  AW88261_SLOT_NUM_TDM8S_VALUE |
++				  (slot << AW88261_I2S_RXL_SLOTVLD_START_BIT) |
++				  (slot << AW88261_I2S_RXR_SLOTVLD_START_BIT));
++		if (ret)
++			return ret;
++
++		ret = regmap_update_bits(aw_dev->regmap, AW88261_I2SCTRL1_REG,
++				  ~AW88261_CHSEL_MASK, AW88261_CHSEL_LEFT_VALUE);
++		if (ret)
++			return ret;
++
++		return aw88261_dev_check_pll(aw_dev);
++	}
++
+ 	/* Configure TDM slots (I2S is represented as no slots) */
+ 	ret = regmap_update_bits(aw_dev->regmap, AW88261_I2SCTRL2_REG,
+ 			~AW88261_SLOT_NUM_MASK, aw88261->slot_num_value);
+@@ -1231,6 +1260,14 @@ static const struct snd_soc_component_driver soc_codec_dev_aw88261 = {
+ 	.probe = aw88261_codec_probe,
+ };
+ 
++static void aw88261_hw_reset(struct aw88261 *aw88261)
++{
++	gpiod_set_value_cansleep(aw88261->reset_gpio, 0);
++	usleep_range(AW88261_1000_US, AW88261_1000_US + 10);
++	gpiod_set_value_cansleep(aw88261->reset_gpio, 1);
++	usleep_range(AW88261_1000_US, AW88261_1000_US + 10);
++}
++
+ static void aw88261_parse_channel_dt(struct aw88261 *aw88261)
+ {
+ 	struct aw_device *aw_dev = aw88261->aw_pa;
+@@ -1315,6 +1352,13 @@ static int aw88261_i2c_probe(struct i2c_client *i2c)
+ 
+ 	i2c_set_clientdata(i2c, aw88261);
+ 
++	aw88261->reset_gpio =
++		devm_gpiod_get_optional(&i2c->dev, "reset", GPIOD_OUT_LOW);
++	if (IS_ERR(aw88261->reset_gpio))
++		dev_info(&i2c->dev, "reset gpio not defined\n");
++	else
++		aw88261_hw_reset(aw88261);
++
+ 	aw88261->regmap = devm_regmap_init_i2c(i2c, &aw88261_remap_config);
+ 	if (IS_ERR(aw88261->regmap)) {
+ 		ret = PTR_ERR(aw88261->regmap);
+diff --git a/sound/soc/codecs/aw88261.h b/sound/soc/codecs/aw88261.h
+index f16f9f8c40a2..5a8e56b7f22b 100644
+--- a/sound/soc/codecs/aw88261.h
++++ b/sound/soc/codecs/aw88261.h
+@@ -272,6 +272,10 @@
+ #define AW88261_I2STXEN_ENABLE_VALUE	\
+ 	(AW88261_I2STXEN_ENABLE << AW88261_I2STXEN_START_BIT)
+ 
++#define AW88261_CHSEL_START_BIT		(10)
++#define AW88261_CHSEL_MASK		(~(0x3 << AW88261_CHSEL_START_BIT))
++#define AW88261_CHSEL_LEFT_VALUE		(0x1 << AW88261_CHSEL_START_BIT)
++
+ #define AW88261_I2SMD_START_BIT	(8)
+ #define AW88261_I2SMD_BITS_LEN	(2)
+ #define AW88261_I2SMD_MASK	\
+-- 
+2.55.0
+

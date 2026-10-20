@@ -1,0 +1,31 @@
+maintainer="Henrik Grimler <henrik@grimler.se>"
+pkgname=firmware-samsung-klimt
+pkgver=6
+pkgrel=0
+pkgdesc="Firmware for Samsung klimt* when using mainline kernel"
+url="https://github.com/exynos5420/android_vendor_samsung_klimt-common"
+arch="armv7"
+license="proprietary"
+options="!check !strip !archcheck !spdx !tracedeps pmb:cross-native"
+depends="linux-firmware-s5p-mfc linux-firmware-brcm"
+
+_klimt_commit="418be0d7638e9b67c0fc3e6a3403951bf64ba67f"
+_klimt_url="$url/raw/$_klimt_commit"
+_klimt_wifi_files="
+	nvram_net.txt
+"
+
+for _i in $_klimt_wifi_files; do
+	source="$source $pkgname-$_klimt_commit-$_i::$_klimt_url/proprietary/etc/wifi/$_i";
+done
+
+package() {
+	install -Dm644 "$srcdir/$pkgname-$_klimt_commit"-nvram_net.txt \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4354-sdio.samsung,klimt-wifi.txt
+	ln -s brcmfmac4354-sdio.samsung,klimt-wifi.txt \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4354-sdio.samsung,klimt-lte.txt
+}
+
+sha512sums="
+e543dc853cfbda057b30476c5e28e6f04a16682dfb6c01a70d0c960d3acd17e0b3d365a03bd1b644c708a36a7c46afafb4218af81af4023b34e82d572aad3807  firmware-samsung-klimt-418be0d7638e9b67c0fc3e6a3403951bf64ba67f-nvram_net.txt
+"

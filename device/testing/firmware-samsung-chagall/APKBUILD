@@ -1,0 +1,31 @@
+maintainer="Henrik Grimler <henrik@grimler.se>"
+pkgname=firmware-samsung-chagall
+pkgver=6
+pkgrel=0
+pkgdesc="Firmware for Samsung chagall* when using mainline kernel"
+url="https://github.com/exynos5420/android_vendor_samsung_chagall-common"
+arch="armv7"
+license="proprietary"
+options="!check !strip !archcheck !spdx !tracedeps pmb:cross-native"
+depends="linux-firmware-s5p-mfc linux-firmware-brcm"
+
+_chagall_commit="3ef6a550213d915356d3fb25cf0560f5d5c87d3d"
+_chagall_url="$url/raw/$_chagall_commit"
+_chagall_wifi_files="
+	nvram_net.txt_4354_a1
+"
+
+for _i in $_chagall_wifi_files; do
+	source="$source $pkgname-$_chagall_commit-$_i::$_chagall_url/proprietary/etc/wifi/$_i";
+done
+
+package() {
+	install -Dm644 "$srcdir/$pkgname-$_chagall_commit"-nvram_net.txt_4354_a1 \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4354-sdio.samsung,chagall-wifi.txt
+	ln -s brcmfmac4354-sdio.samsung,chagall-wifi.txt \
+		"$pkgdir"/usr/lib/firmware/brcm/brcmfmac4354-sdio.samsung,chagall-lte.txt
+}
+
+sha512sums="
+cd7da23af0b3b15c8a6242cb32fd028dbb31fc2e257f847c3c1c4c282e4b0bb1cbee6b6cc710f507b12d6480f75af128ed13c75674e96f3ce85c9d32fc8a2e85  firmware-samsung-chagall-3ef6a550213d915356d3fb25cf0560f5d5c87d3d-nvram_net.txt_4354_a1
+"

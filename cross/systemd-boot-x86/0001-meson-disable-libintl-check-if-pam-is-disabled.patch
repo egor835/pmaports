@@ -1,0 +1,17 @@
+Disable the libucontext checks when building without the pam
+feature, so e.g. systemd-boot can be (cross) compiled without having the
+foreign arch libucontext installed on a musl platform.
+
+Upstream reference: https://github.com/systemd/systemd/pull/40191
+---
+--- i/meson.build
++++ w/meson.build
+@@ -1056,7 +1056,7 @@ conf.set10('HAVE_LIBCRYPT', have)
+ 
+ # musl declares the ucontext.h functions but does not implement them; the fiber bootstrap in
+ # src/libsystemd/sd-future/fiber.c relies on them, so on musl we have to link to libucontext.
+-if get_option('libc') == 'musl'
++if get_option('pam').enabled() and get_option('libc') == 'musl'
+         libucontext = dependency('libucontext')
+ else
+         libucontext = []

@@ -1,0 +1,76 @@
+# Reference: <https://postmarketos.org/vendorkernel>
+# Co-Maintainer: Stefan Hansson <newbyte@postmarketos.org>
+maintainer="Alistair Francis <alistair@alistair23.me>"
+pkgname=linux-purism-librem5
+pkgver=6.18.56
+pkgrel=0
+_purismrel=1
+_purismver=${pkgver}pureos$_purismrel
+_commit=6d61fb083664f71ce1b578fae39308c58c0246c8
+pkgdesc="Purism Librem 5 phone kernel fork"
+arch="aarch64"
+_carch="arm64"
+_flavor="purism-librem5"
+url="https://source.puri.sm/Librem5/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-community
+	"
+makedepends="
+	bison
+	clang
+	elfutils-dev
+	findutils
+	flex
+	linux-headers
+	lld
+	llvm
+	openssl-dev
+	pahole
+	perl
+	postmarketos-installkernel
+	python3
+	zstd
+	"
+
+_defconfig="librem5_defconfig"
+_config="config-$_flavor.$arch"
+
+
+source="
+	$pkgname-$_purismver.tar.gz::https://source.puri.sm/Librem5/linux/-/archive/pureos/$_purismver/linux-pureos$_purismver.tar.gz
+	$_config
+"
+builddir="$srcdir/linux-pureos-$_purismver-$_commit"
+
+prepare() {
+	default_prepare
+	cp "$srcdir/config-$_flavor.$arch" .config
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	make dtbs_install install modules_install \
+		ARCH="$_carch" \
+		LLVM=1 \
+		INSTALL_PATH="$pkgdir"/boot \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
+
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
+
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/"$_flavor"/kernel.release
+}
+
+sha512sums="
+0e94696984d51dbd9d97afceb671af139d62119de81af350ce39fe47dd8198446cb573c661d554b7b62097275ab7739afd19f9bc0d0ae55ccbba4810c026b357  linux-purism-librem5-6.18.56pureos1.tar.gz
+6612dc4f9ea747810127304f3947d69471017937fbaf8618c173963af1cf2abc8fab1de611aa62faf9dd93735cd1b892e463fbca17f87e529091528646e4d376  config-purism-librem5.aarch64
+"

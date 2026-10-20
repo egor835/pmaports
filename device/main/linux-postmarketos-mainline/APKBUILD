@@ -1,0 +1,130 @@
+# Co-Maintainer: Achill Gilgenast <achill@achill.org>
+maintainer="Aelin <aelin@postmarketos.org>"
+pkgname=linux-postmarketos-mainline
+pkgver=7.3_rc7
+pkgrel=0
+_rel=${pkgver#*_p}
+_kver=${pkgver%_p*}
+_kver=${_kver//_/-}
+pkgdesc="Mainline Kernel"
+# armhf: pmbootstrap cannot dynamically choose a defconfig, so it ends up using multi_v7_defconfig which isn't correct
+# s390x: kconfigcheck is not ready for it yet
+arch="all !armhf !s390x"
+_flavor="mainline"
+url="https://kernel.org"
+license="GPL-2.0-only"
+options="
+	!check
+	!strip
+	!tracedeps
+	pmb:cross-native
+	pmb:generic-kernel
+	pmb:kconfigcheck-community
+	pmb:kconfigcheck-immutable
+	pmb:kconfigcheck-lockdown
+	pmb:kconfigcheck-rust
+	pmb:kconfigcheck-selinux
+	pmb:kconfigcheck-uefi
+	pmb:kconfigcheck-virt
+"
+makedepends="
+	bash
+	bison
+	clang
+	clang-libclang
+	diffutils
+	elfutils-dev
+	findutils
+	flex
+	grep
+	kmod
+	linux-headers
+	lld
+	llvm
+	openssl-dev
+	pahole
+	perl
+	postmarketos-installkernel
+	python3
+	rust
+	rust-bindgen
+	rust-src
+	rustfmt
+	sed
+	zstd
+"
+
+# powerpc boot wrapper patches:
+# Necessary for compilation without cross GCC in PATH, cherry-picked from
+# Nathan's fork, he does not have time to upstream them right now but would be
+# happy if someone else did:
+# https://lore.kernel.org/linuxppc-dev/aXs8sgAcci9FKKpx@luna/
+source="
+	$pkgname-$pkgver.tar.gz::https://git.kernel.org/torvalds/t/linux-${pkgver/_/-}.tar.gz
+
+	0001-WIP-arch-powerpc-boot-Support-LLVM-1-in-wrapper-scri.patch
+	0002-WIP-arch-powerpc-boot-Add-z-norelro.patch
+
+	config-mainline.aarch64
+	config-mainline.armv7
+	config-mainline.loongarch64
+	config-mainline.ppc64le
+	config-mainline.riscv64
+	config-mainline.x86_64
+"
+builddir="$srcdir/linux-${pkgver/_/-}"
+
+case "$CARCH" in
+	aarch64*) _carch="arm64" ;;
+	arm*) _carch="arm" ;;
+	loongarch*) _carch="loongarch" ;;
+	ppc*) _carch="powerpc" ;;
+	riscv*) _carch="riscv" ;;
+	s390x) _carch="s390" ;;
+	x86) _carch="i386" ;;
+	x86_64) _carch="x86_64" ;;
+esac
+
+prepare() {
+	default_prepare
+	cp "$srcdir/config-$_flavor.$CARCH" .config
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	local _install
+	case "$CARCH" in
+		arm*|aarch64|riscv*) _install="zinstall dtbs_install" ;;
+		*) _install="install" ;;
+	esac
+
+	make modules_install $_install \
+		ARCH="$_carch" \
+		LLVM=1 \
+		INSTALL_PATH="$pkgdir"/boot \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
+
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
+
+	install -Dm644 "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/"$_flavor"/kernel.release
+}
+
+sha512sums="
+a43556cfff1dc107cdceac9e8344a2ee7c304a6826e7c3cc08b1a0d2099320274cdb5b45948c0d86632b94b923a4036faa50e2b1b1c62c5a1315df00d9a95de3  linux-postmarketos-mainline-7.3_rc7.tar.gz
+1f11df2480e9f691573283597160b4c806e492cdca4825f3acb3afb70bde43abfab487bcde1f5553b431a702a0039479d041b0ce7859970e706b5a51d2ad8fb0  0001-WIP-arch-powerpc-boot-Support-LLVM-1-in-wrapper-scri.patch
+302c20c85559fc9b3b2420ed25be1bfbb76c87f2a470e4141c32e9542cf1f5c6b3b5a7847231a3eaa0f6bc0e5942d0c1599e807175dcf5e63469704c3d6adde3  0002-WIP-arch-powerpc-boot-Add-z-norelro.patch
+aef0e39a709b12db914fcc5184f282998d3a0d213a3db01208f7ffa49ddf08ae27b163d8ee392b060e3835b75ccb88a3ac18c045432b49b941cffaf55d02ba3c  config-mainline.aarch64
+bcb45c638ea6151ce00e58b632ed9d8ca709576617bb80481ab0bfcec6e06219d93c56e5a4ac393b89b4d9e9b2d1fd84037804f477a5d63ef77e7ed2f67c220f  config-mainline.armv7
+f19867cf55f34a26ff864d8857f9c1f2c9c49051badbc120c51b23cb10cf65fd54e536dc9ccb96a75d0b2c1c131837a7caa10be3c1416d2b5d2b0aae167d0ab5  config-mainline.loongarch64
+c798ed32b93be918026b316db9a5c2d29cb12be23920a6572b5783c164b41a01b95a0031760a558d7b38911b54e139de8b5bf3fe31040f5eb5834882482c5d36  config-mainline.ppc64le
+a2e891a5a18e053c1f220c9083a829fd20cdddfde795d4f261cccd7df682311713e523401d4cf749d238231e49a5cba3c9238591b0472b0a2cfafec91e446148  config-mainline.riscv64
+e421067cc4b3a92cda1254ca98ce32fe1e8440ddfda1073365f1211cfb7a976bf8f4a9fb0a5e6c04a9ae30ea827ec7307587302d0df1043710500ad7e1077c5a  config-mainline.x86_64
+"

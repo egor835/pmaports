@@ -1,0 +1,37 @@
+# Reference: https://postmarketos.org/uipkg
+# Co-Maintainer: Hugo Osvaldo Barrera <hugo@whynothugo.nl>
+maintainer="Sandelinos <postmarketos@sandelinos.me>"
+pkgname=postmarketos-ui-retroarch
+pkgver=4
+pkgrel=0
+pkgdesc="RetroArch in KMS mode"
+url="https://www.retroarch.com"
+# riscv64: gamescope
+# armv7, loongarch64, ppc64le: mkrundir
+arch="noarch !riscv64 !armv7 !loongarch64 !ppc64le"
+license="GPL-3.0-or-later"
+depends="
+	autologin
+	gamescope
+	retroarch
+	seatd
+	"
+depends_openrc="mkrundir"
+install="postmarketos-ui-retroarch-openrc.post-install postmarketos-ui-retroarch-openrc.post-upgrade"
+subpackages="$pkgname-openrc"
+source="
+	retroarch.initd
+	postmarketos-ui-retroarch.sh
+	"
+options="!check pmb:drm pmb:default-openrc pmb:support-openrc pmb:support-systemd"
+_pmb_groups="seat"
+
+package() {
+	install -Dm755 retroarch.initd "$pkgdir/etc/init.d/retroarch"
+	install -Dm755 postmarketos-ui-retroarch.sh "$pkgdir/usr/bin/postmarketos-ui-retroarch"
+}
+
+sha512sums="
+313a4d4c8c9a1c11a089504a0075cd51ca7d05f70082a3eccda14c890e60901d7602693c4eba5bbfdfe9516b7d2ca43e639a5a070001767804062bd8a8d8fcf3  retroarch.initd
+889f9f866395a7c6456978e181b51fbeb08b85e5cf05f4a7dc89f3e412ee2cf8a5ddb922b6ff99a4ce98d22fb875622ec5ccd8152ba6804dd7cb2a1c4d081c3b  postmarketos-ui-retroarch.sh
+"

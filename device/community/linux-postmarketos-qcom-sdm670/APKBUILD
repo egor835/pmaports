@@ -1,0 +1,81 @@
+# Stable Linux kernel with patches for SDM670 devices
+# Kernel config based on: arch/arm64/configs/{defconfig,sdm{670,845}.config}
+maintainer="Richard Acayan <mailingradian@gmail.com>"
+_flavor="postmarketos-qcom-sdm670"
+pkgname=linux-$_flavor
+pkgver=7.2.3_beta2
+pkgrel=0
+pkgdesc="Mainline Kernel fork for SDM670/SDM710 devices"
+arch="aarch64"
+_carch="arm64"
+url="https://gitlab.com/sdm670-mainline/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-community
+	pmb:kconfigcheck-uefi
+"
+makedepends="
+	bison
+	clang
+	elfutils-dev
+	findutils
+	flex
+	installkernel
+	linux-headers
+	lld
+	llvm
+	openssl-dev
+	pahole
+	perl
+	python3
+	zstd
+"
+
+_config="config-$_flavor.$arch"
+_tag="sdm670-v$pkgver"
+
+# Source
+source="
+	https://gitlab.com/sdm670-mainline/linux/-/archive/$_tag/linux-$_tag.tar.gz
+	$_config
+"
+builddir="$srcdir/linux-$_tag"
+
+prepare() {
+	default_prepare
+	cp "$srcdir/config-$_flavor.$arch" .config
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	# ZBOOT EFI decompressor for EFI booting
+	install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz.efi" \
+		"$pkgdir/boot/linux.efi"
+
+	# Old GZIP'd kernel image for boot.img compatibility
+	install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz" \
+		"$pkgdir/boot/vmlinuz"
+
+	make modules_install dtbs_install \
+		ARCH="$_carch" \
+		LLVM=1 \
+		INSTALL_PATH="$pkgdir"/boot/ \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
+	rm -f "$pkgdir"/usr/lib/modules/*/build "$pkgdir"/usr/lib/modules/*/source
+
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+}
+
+sha512sums="
+73ed6172f7681218426e3d7887db18018f0bfc942426f4e5ed2cfe1f25055b7a83e80929298fb0e42869dd0f3d6759d19465d572cf16906012aee06823f6c859  linux-sdm670-v7.2.3_beta2.tar.gz
+ba5dbd97ac14c364e4cf221129574cd0261bdcda6fb341a4ad9f215ae1c52a704e8022b643055eee9767ea0b7546659192340adcbcd48d9be4f73d8043256aff  config-postmarketos-qcom-sdm670.aarch64
+"

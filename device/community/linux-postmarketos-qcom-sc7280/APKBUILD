@@ -1,0 +1,83 @@
+# Co-Maintainer: Aelin <aelin@postmarketos.org>
+# Co-Maintainer: Federico Amedeo Izzo <federico@izzo.pro>
+maintainer="Luca Weiss <luca@lucaweiss.eu>"
+_flavor="postmarketos-qcom-sc7280"
+pkgname=linux-$_flavor
+pkgver=7.2.9
+pkgrel=2
+pkgdesc="Mainline Kernel fork for SC7280/SM7325/QCM6490 devices"
+arch="aarch64"
+_carch="arm64"
+url="https://github.com/sc7280-mainline/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps
+	pmb:cross-native
+	pmb:kconfigcheck-community
+	pmb:kconfigcheck-uefi
+	pmb:kconfigcheck-virt
+	"
+makedepends="
+	bison
+	clang
+	elfutils-dev
+	findutils
+	flex
+	installkernel
+	linux-headers
+	lld
+	llvm
+	openssl-dev
+	pahole
+	perl
+	python3
+	zstd
+"
+
+_repo="linux"
+_config="config-$_flavor.$arch"
+_tag="v$pkgver-sc7280"
+
+# Source
+source="
+	https://github.com/sc7280-mainline/$_repo/archive/refs/tags/$_tag/$_repo-$_tag.tar.gz
+	$_config
+"
+builddir="$srcdir/$_repo-$pkgver-sc7280"
+
+prepare() {
+	default_prepare
+	cp "$srcdir/config-$_flavor.$arch" .config
+}
+
+build() {
+	unset LDFLAGS
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1 ))-$_flavor"
+}
+
+package() {
+	# ZBOOT EFI decompressor for EFI booting
+	install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz.efi" \
+		"$pkgdir/boot/linux.efi"
+
+	# Old GZIP'd kernel image for boot.img compatibility
+	install -Dm644 "$builddir/arch/$_carch/boot/vmlinuz" \
+		"$pkgdir/boot/vmlinuz"
+
+	make modules_install dtbs_install \
+		ARCH="$_carch" \
+		LLVM=1 \
+		INSTALL_PATH="$pkgdir"/boot/ \
+		INSTALL_MOD_PATH="$pkgdir"/usr \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
+	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/$_flavor/kernel.release
+}
+
+sha512sums="
+4852430f42a9e45833d590559875b869405d8d28d93fb9111f9b25f0b0d336c36d9be6a56a27da9c3cde642df17f792055729fa41256f51860794db3afdae674  linux-v7.2.9-sc7280.tar.gz
+54ec1fe2de9c9af8a549ea27b47c77f24b62df351dcafddb0c1723a664beec7db7556ee39b334be3fb1dd5ed84c571ad4713bca1765f0ead590433c61f2b0ff3  config-postmarketos-qcom-sc7280.aarch64
+"
