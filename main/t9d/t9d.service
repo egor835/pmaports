@@ -1,0 +1,9 @@
+[Unit]
+Description=Multi-tap text entry for the phone keypad
+
+[Service]
+ExecStart=/usr/bin/t9d
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

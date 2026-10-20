@@ -3,7 +3,7 @@ maintainer="Egor 835 <egor.su.8@gmail.com>"
 pkgname=device-lg-vfp
 pkgdesc="LG Wine Smart"
 pkgver=1
-pkgrel=0
+pkgrel=1
 url="https://postmarketos.org"
 license="MIT"
 arch="armv7"
@@ -15,6 +15,7 @@ depends="
 	soc-qcom-msm8226
 	"
 makedepends="devicepkg-dev"
+_pmb_recommends="t9d"
 subpackages="$pkgname-nonfree-firmware:nonfree_firmware"
 source="
 	deviceinfo

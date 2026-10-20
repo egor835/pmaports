@@ -1,0 +1,28 @@
+# Maintainer: Egor 835 <egor.su.8@gmail.com>
+pkgname=t9d
+pkgver=0.1
+pkgrel=0
+pkgdesc="Multi-tap (feature phone style) text entry for hardware phone keypads"
+url="https://github.com/egor835/pmaports"
+arch="noarch"
+license="MIT"
+depends="python3 py3-evdev"
+options="!check" # no tests
+source="
+	t9d.py
+	t9d.service
+	80-t9d.preset
+	"
+
+package() {
+	install -Dm755 "$srcdir"/t9d.py "$pkgdir"/usr/bin/t9d
+	install -Dm644 "$srcdir"/t9d.service \
+		"$pkgdir"/usr/lib/systemd/system/t9d.service
+	install -Dm644 "$srcdir"/80-t9d.preset \
+		"$pkgdir"/usr/lib/systemd/system-preset/80-t9d.preset
+}
+sha512sums="
+74326bbb4cea92b3b531d5daf5ed35a8935573bbe556880afacfe0a78a4a2201a4774c3526df68c03602a6bcfb9db4c00d4513f667c6e865e817c3846bbf11f5  t9d.py
+64fd424c3e1f6332978a03e1733fa37b4357c6d091a51bd72c3490cc2f11b64f06459fe7a787268f261ff48544cb194d395f22d074795671c722e2fb3635061f  t9d.service
+3da179a5f30ebcd237e7680ffb54f05c75a1430623649ed06d3e8ebb8b66b38f61135f04597afab4cb525451e01108e668135bd14ccfe8cf8aed90d3e2b80a61  80-t9d.preset
+"

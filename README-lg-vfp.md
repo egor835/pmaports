@@ -16,6 +16,9 @@ Wi-Fi/BT (wcn36xx, firmware from the modem partition), USB networking,
 charging (500 mA, anti reverse boost), battery voltage and capacity, SD card,
 GPU (freedreno, VRAM carveout, no IOMMU).
 
+The keypad types text multi-tap style through `t9d` (installed by default):
+2-9 letters, hold for digit, `#` cycles abc/Abc/ABC/123, hold `#` toggles it.
+
 Not yet: modem, keypad backlight, real Wi-Fi MAC, GPU IOMMU.
 
 ## Install (SD card, eMMC untouched)
